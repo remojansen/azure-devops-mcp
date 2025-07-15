@@ -4,13 +4,13 @@
 // Licensed under the MIT License.
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import * as azdev from "azure-devops-node-api";
 import { AccessToken, DefaultAzureCredential } from "@azure/identity";
 import { configurePrompts } from "./prompts.js";
 import { configureAllTools } from "./tools.js";
 import { UserAgentComposer } from "./useragent.js";
 import { packageVersion } from "./version.js";
+import { createAuthServer } from "./http.js";
 const args = process.argv.slice(2);
 if (args.length === 0) {
   console.error("Usage: mcp-server-azuredevops <organization_name>");
@@ -45,22 +45,22 @@ function getAzureDevOpsClient(userAgentComposer: UserAgentComposer): () => Promi
 }
 
 async function main() {
-  const server = new McpServer({
+  const mcpServer = new McpServer({
     name: "Azure DevOps MCP Server",
     version: packageVersion,
   });
 
   const userAgentComposer = new UserAgentComposer(packageVersion);
-  server.server.oninitialized = () => {
-    userAgentComposer.appendMcpClientInfo(server.server.getClientVersion());
+  mcpServer.server.oninitialized = () => {
+    userAgentComposer.appendMcpClientInfo(mcpServer.server.getClientVersion());
   };
 
-  configurePrompts(server);
+  configurePrompts(mcpServer);
 
-  configureAllTools(server, getAzureDevOpsToken, getAzureDevOpsClient(userAgentComposer), () => userAgentComposer.userAgent);
+  configureAllTools(mcpServer, getAzureDevOpsToken, getAzureDevOpsClient(userAgentComposer), () => userAgentComposer.userAgent);
 
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
+  const { baseUrl } = await createAuthServer(mcpServer);
+  console.log(`Server is running at ${baseUrl.href}`);
 }
 
 main().catch((error) => {
