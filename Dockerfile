@@ -1,5 +1,5 @@
 # Use the official Node.js runtime as the base image
-FROM node:20-alpine
+FROM node:20
 
 # Set the working directory in the container
 WORKDIR /
@@ -12,6 +12,11 @@ COPY . .
 
 # Install dependencies
 RUN npm install
+
+# Install Azure CLI
+RUN apt-get update && apt-get install -y curl bash python3-pip
+RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+RUN az --version
 
 # Build the TypeScript application
 RUN npm run build

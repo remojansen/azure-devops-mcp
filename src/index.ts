@@ -15,7 +15,7 @@ import { InMemoryEventStore } from '@modelcontextprotocol/sdk/examples/shared/in
 import { configurePrompts } from './prompts.js';
 import { configureAllTools } from './tools.js';
 import { UserAgentComposer } from './useragent.js';
-import { AccessToken, DefaultAzureCredential } from '@azure/identity';
+import { AccessToken } from '@azure/identity';
 
 const args = process.argv.slice(2);
 if (args.length === 0) {
@@ -28,14 +28,12 @@ export const orgUrl = "https://dev.azure.com/" + orgName;
 
 
 async function getAzureDevOpsToken(): Promise<AccessToken> {
-  if (process.env.ADO_MCP_AZURE_TOKEN_CREDENTIALS) {
-    process.env.AZURE_TOKEN_CREDENTIALS = process.env.ADO_MCP_AZURE_TOKEN_CREDENTIALS;
-  } else {
-    process.env.AZURE_TOKEN_CREDENTIALS = "dev";
-  }
-  const credential = new DefaultAzureCredential(); // CodeQL [SM05138] resolved by explicitly setting AZURE_TOKEN_CREDENTIALS
-  const token = await credential.getToken("499b84ac-1321-427f-aa17-267ca6975798/.default");
-  return token;
+  // TODO: Ideally instead of a PAT we should
+  // use the current user's credentials from GitHub
+  return {
+    token: process.env.ADO_PAT || "",
+    expiresOnTimestamp: Date.now() + 3600 * 1000 // 1 hour expiration
+  };
 }
 
 function getAzureDevOpsClient(userAgentComposer: UserAgentComposer): () => Promise<azdev.WebApi> {
@@ -90,7 +88,7 @@ async function main() {
 
   // Handle all MCP Streamable HTTP requests (GET, POST, DELETE) on a single endpoint
   app.all('/', async (req: Request, res: Response) => {
-    console.log(`Received ${req.method} request to /mcp`);
+    console.log(`Received ${req.method} request`);
 
     try {
       // Check for existing session ID
